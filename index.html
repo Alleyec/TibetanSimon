@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mandala Simon Says</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .mandala {
+            position: relative;
+            width: 100%;
+            padding-bottom: 100%; /* Makes it square */
+        }
+        .color-segment {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            opacity: 0.7;
+            cursor: pointer;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .color-segment:hover, .color-segment.active {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        #red { background-color: #FF6B6B; top: 0; left: 25%; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+        #blue { background-color: #4ECDC4; top: 25%; right: 0; clip-path: polygon(0% 0%, 100% 50%, 0% 100%); }
+        #green { background-color: #45B7D1; bottom: 0; left: 25%; clip-path: polygon(50% 100%, 0% 0%, 100% 0%); }
+        #yellow { background-color: #FED766; top: 25%; left: 0; clip-path: polygon(100% 0%, 100% 100%, 0% 50%); }
+        #purple { background-color: #8A4FFF; top: 0; left: 0; clip-path: polygon(0% 0%, 100% 0%, 50% 100%); }
+        #orange { background-color: #FF8C42; bottom: 0; right: 0; clip-path: polygon(0% 100%, 100% 100%, 50% 0%); }
+        #score, #message {
+            margin-top: 20px;
+            font-size: 24px;
+            text-align: center;
+        }
+        #start-button {
+            margin-top: 20px;
+            font-size: 18px;
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        #start-button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Mandala Simon Says</h1>
+        <div class="mandala">
+            <div id="red" class="color-segment"></div>
+            <div id="blue" class="color-segment"></div>
+            <div id="green" class="color-segment"></div>
+            <div id="yellow" class="color-segment"></div>
+            <div id="purple" class="color-segment"></div>
+            <div id="orange" class="color-segment"></div>
+        </div>
+        <div id="score">Score: 0</div>
+        <div id="message"></div>
+        <button id="start-button">Start Game</button>
+    </div>
+
+    <!-- Audio elements with Tibetan singing bowl sounds -->
+    <audio id="sound-red" src="https://freesound.org/data/previews/339/339809_5121236-lq.mp3"></audio>
+    <audio id="sound-blue" src="https://freesound.org/data/previews/411/411089_5121236-lq.mp3"></audio>
+    <audio id="sound-green" src="https://freesound.org/data/previews/411/411088_5121236-lq.mp3"></audio>
+    <audio id="sound-yellow" src="https://freesound.org/data/previews/411/411087_5121236-lq.mp3"></audio>
+    <audio id="sound-purple" src="https://freesound.org/data/previews/411/411086_5121236-lq.mp3"></audio>
+    <audio id="sound-orange" src="https://freesound.org/data/previews/411/411085_5121236-lq.mp3"></audio>
+
+    <script>
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+        let sequence = [];
+        let playerSequence = [];
+        let score = 0;
+        let isPlaying = false;
+
+        const scoreElement = document.getElementById('score');
+        const messageElement = document.getElementById('message');
+        const startButton = document.getElementById('start-button');
+
+        colors.forEach(color => {
+            document.getElementById(color).addEventListener('click', () => handleColorClick(color));
+        });
+
+        startButton.addEventListener('click', startGame);
+
+        function startGame() {
+            sequence = [];
+            playerSequence = [];
+            score = 0;
+            isPlaying = true;
+            updateScore();
+            messageElement.textContent = '';
+            startButton.textContent = 'Restart';
+            generateNextSequence();
+        }
+
+        function generateNextSequence() {
+            const newColor = colors[Math.floor(Math.random() * colors.length)];
+            sequence.push(newColor);
+            playSequence();
+        }
+
+        async function playSequence() {
+            isPlaying = false;
+            for (let color of sequence) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                flashColor(color);
+                playSound(color);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Longer pause to let the bowl sound resonate
+            }
+            isPlaying = true;
+        }
+
+        function flashColor(color) {
+            const element = document.getElementById(color);
+            element.classList.add('active');
+            setTimeout(() => {
+                element.classList.remove('active');
+            }, 500); // Longer flash to match the bowl sound
+        }
+
+        function playSound(color) {
+            const audio = document.getElementById(`sound-${color}`);
+            audio.currentTime = 0;
+            audio.play();
+        }
+
+        function handleColorClick(color) {
+            if (!isPlaying) return;
+            
+            flashColor(color);
+            playSound(color);
+            playerSequence.push(color);
+            
+            if (playerSequence[playerSequence.length - 1] !== sequence[playerSequence.length - 1]) {
+                endGame();
+                return;
+            }
+            
+            if (playerSequence.length === sequence.length) {
+                score++;
+                updateScore();
+                playerSequence = [];
+                setTimeout(generateNextSequence, 1500); // Longer pause between rounds
+            }
+        }
+
+        function updateScore() {
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        function endGame() {
+            isPlaying = false;
+            messageElement.textContent = 'Game Over! Click Start to play again.';
+            startButton.textContent = 'Start Game';
+        }
+    </script>
+</body>
+</html>
